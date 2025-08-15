@@ -4,4 +4,5 @@
 /**/__PYCACHE__
 /pretrained_weights/re10k.ckpt
 /pretrained_weights/acid.ckpt
-/for_thesis
+/**/*.log
+*.log

@@ -55,7 +55,8 @@ class GaussianAligner(object):
                              opt_cam_trans: torch.Tensor,
                              gt_color_i: torch.Tensor,
                              main_component: tuple,
-                             mini_component: tuple) -> tuple:
+                             mini_component: tuple,
+                             mw2_loss_flag: bool = True) -> tuple:
         width = self.dataset.width
         height = self.dataset.height
         intrinsics = self.dataset.intrinsics
@@ -123,8 +124,11 @@ class GaussianAligner(object):
             self.vis_align_result(
                 frame_id_i, iter+1, gt_color_i, main_color_i, main_depth_i, mini_color_i, mini_depth_i)
 
-        mw2loss = self.compute_mw2_loss(
-            main_component, mini_component, w2c_i, opt_gs_scale, opt_cam_rot, opt_cam_trans)
+        if mw2_loss_flag:
+            mw2loss = self.compute_mw2_loss(
+                main_component, mini_component, w2c_i, opt_gs_scale, opt_cam_rot, opt_cam_trans)
+        else:
+            mw2loss = torch.tensor(0.0).to(device)
 
         return color_loss, depth_loss, mw2loss
 
@@ -364,13 +368,19 @@ class GaussianAligner(object):
         depth_loss_list = []
         mw2_loss_list = []
         total_loss_list = []
+        mw2_loss_history = np.array([float("inf")] * 10)
+        mw2_loss_flag = True
 
         for iter in pbar:
 
             color_loss, depth_loss, mw2loss = self.compute_align_losses(
                 num_iters, iter, frame_id_i,
                 model, mini, reference_w2c, opt_gs_scale, opt_cam_rot, opt_cam_trans, gt_color_i,
-                main_component, mini_component)
+                main_component, mini_component, mw2_loss_flag)
+
+            mw2_loss_history[iter % len(mw2_loss_history)] = mw2loss.item()
+            if mw2_loss_flag and iter > 10 and np.max(mw2_loss_history) <= mw2loss.item():
+                mw2_loss_flag = False
 
             total_loss = color_loss_weight * color_loss + \
                 depth_loss_weight * depth_loss + mw2_weight * mw2loss
@@ -386,13 +396,10 @@ class GaussianAligner(object):
             model.optimizer.zero_grad()
 
             with torch.no_grad():
-                pbar.set_postfix_str(
-                    f"Color Loss: {color_loss.item():.0f}, Depth Loss: {depth_loss.item():.0f}, MW2 Loss: {mw2loss:.0f}")
+                # pbar.set_postfix_str(
+                #     f"Color Loss: {color_loss.item():.0f}, Depth Loss: {depth_loss.item():.0f}, MW2 Loss: {mw2loss:.0f}")
                 if total_loss.item() < current_min_loss:
                     current_min_loss = total_loss.item()
-                    current_depth_loss = depth_loss.item()
-                    current_color_loss = color_loss.item()
-                    current_mw2_loss = mw2loss.item()
                     best_w2c = torch.eye(4, dtype=torch.float32, device=device)
                     best_w2c[:3, :3] = build_rotation(F.normalize(
                         opt_cam_rot[None].clone().detach()))[0]

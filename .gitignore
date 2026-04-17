@@ -6,3 +6,4 @@
 /pretrained_weights/acid.ckpt
 /**/*.log
 *.log
+/.venv

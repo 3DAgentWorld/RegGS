@@ -85,6 +85,8 @@ Download NoPoSplat [re10k](https://huggingface.co/botaoye/NoPoSplat/resolve/main
 
 ### Run RegGS on re10k sample
 
+The official RE10K dataset can be downloaded from: https://google.github.io/realestate10k/download.html
+
 The preprocessed re10k data is placed in the directory `./sample_data`. To run RegGS on sample data, run:
 1. The inference stage: \
 `CUDA_VISIBLE_DEVICES=0 python3 run_infer.py config/re10k.yaml`
@@ -93,13 +95,71 @@ The preprocessed re10k data is placed in the directory `./sample_data`. To run R
 3. The evaluation stage: \
 `CUDA_VISIBLE_DEVICES=0 python3 run_metric.py --checkpoint_path output/re10k/000c3ab189999a83`
 
+### Preprocessing RE10K Data
+
+To convert raw RE10K trajectory files to RegGS sample format, use the preprocessing script:
+
+```bash
+python scripts/preprocess_re10k.py \
+  --scene-txt datasets/RealEstate10K/test/SCENE_ID.txt \
+  --original-width 455 \
+  --target-width 256 \
+  --download-video
+```
+
+**Parameters:**
+- `--scene-txt`: Path to RE10K scene txt file (required)
+- `--out-root`: Output root directory (default: `sample_data`)
+- `--original-width`: Original frame width from video (e.g., 455) for intrinsics adjustment
+- `--target-width`: Target frame width after cropping (default: 256)
+- `--video-path`: Path to local video file (mp4)
+- `--download-video`: Download video using yt-dlp if `--video-path` not provided
+- `--max-frames`: Maximum number of frames to process (default: -1, meaning all frames)
+- `--overwrite`: Overwrite existing output directory
+
+The script outputs:
+- `images/`: PNG frames extracted from video
+- `cameras.json`: Per-frame camera poses and intrinsics in RegGS format
+- `intrinsics.json`: Normalized camera intrinsics parameters
+
+### Run RegGS on ACID dataset
+
+The ACID (Airborne Coastal Imagery Dataset) can be downloaded from: https://infinite-nature.github.io/
+
+### Preprocessing ACID Data
+
+To convert raw ACID trajectory files to RegGS sample format, use:
+
+```bash
+python scripts/preprocess_acid.py \
+  --scene-txt datasets/acid/test/SCENE_ID.txt \
+  --original-width 455 \
+  --target-width 256 \
+  --download-video
+```
+
+**Parameters:**
+- `--scene-txt`: Path to ACID scene txt file (required)
+- `--out-root`: Output root directory (default: `sample_data`)
+- `--original-width`: Original frame width before 256 preprocessing (default: `455`)
+- `--target-width`: Target frame width after preprocessing (default: `256`)
+- `--video-path`: Path to local video file (mp4)
+- `--download-video`: Download video using yt-dlp if `--video-path` is not provided
+- `--max-frames`: Maximum number of frames to process (default: `-1`, meaning all frames)
+- `--overwrite`: Overwrite existing output directory
+
+The script outputs:
+- `images/`: PNG frames extracted from video
+- `cameras.json`: Per-frame camera poses and intrinsics in RegGS format
+- `intrinsics.json`: Normalized camera intrinsics parameters
+
 ## ✏️ TODO
 
 - [x] create codebase
 - [x] add evaluation script
 - [x] prepare sample data
 - [x] write installation guide
-- [ ] add data preprocessing script
+- [x] add data preprocessing script
 - [ ] implement GPU-optimized k-means
 - [ ] add Gradio visualization
 
